@@ -33,11 +33,11 @@ do
     end
 end
 
-local redis = require("kong.plugins.request-throttle.redis")
+local redis = require("resty.redis")
 redis.add_commands("sentinel")
 
-local get_master = require("kong.plugins.request-throttle.redis.sentinel").get_master
-local get_slaves = require("kong.plugins.request-throttle.redis.sentinel").get_slaves
+local get_master = require("resty.redis.sentinel").get_master
+local get_slaves = require("resty.redis.sentinel").get_slaves
 
 
 -- A metatable which prevents undefined fields from being created / accessed

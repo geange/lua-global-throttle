@@ -19,9 +19,12 @@ local function sync_counter_to_redis(conf, redis)
 
 end
 
+-- 使用 sorted set 来计算 kong 节点的数量
 local function fetch_kong_node_from_redis(redis, sync_rate)
     local now = ngx.time()
     redis:zadd("kong_nodes", now, kong.node.get_id())
+    -- 设置 sorted set 的过期时间
+    redis:expire("kong_nodes", sync_rate * 2)
     return redis:zcount("kong_nodes", now - sync_rate, now + sync_rate)
 end
 

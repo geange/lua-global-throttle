@@ -1,6 +1,6 @@
 local floor = math.floor
 local modf = math.modf
-local redis_conn = require "kong.plugins.request-throttle.redis.connector"
+local redis_conn = require "resty.redis.connector"
 
 local _M = {}
 
@@ -80,6 +80,8 @@ local function get_global_value(key, redis)
     return sum
 end
 
+-- sync_redis_with_shm 同步redis数据和shm缓存
+-- 需要将窗口的平均计数器进行一个同步，避免节点的数据不一致导致的
 function _M:sync_redis_with_shm(keys_array, counter_dict, expire_time, conf_limit)
     local connected = self:connect()
     if not connected then
@@ -99,21 +101,21 @@ function _M:sync_redis_with_shm(keys_array, counter_dict, expire_time, conf_limi
                 return
             end
 
-            --四舍五入，算当前节点的限流值
+            -- 四舍五入，算当前节点的限流值
             local limit, _ = modf(floor(global_value / kong_nodes_number + 0.5))
-            --同步redis数据到shm
+            -- 同步redis数据到shm
             local ttl, err = ngx.shared[counter_dict]:ttl(key)
             if err or ttl <= 0 then
                 break
             end
 
+            -- 简单的配置除以节点数，获取当前节点的理论限流值
             local node_limit = modf(floor(conf_limit / kong_nodes_number + 0.5))
 
             if node_limit > limit then
                 ngx.shared[counter_dict]:set(key, limit, ttl)
-             else
-                --防止膨胀叠加
-                ngx.shared[counters_shared_dict_name]:set(key, node_limit, ttl)
+            else
+                ngx.shared[counter_dict]:set(key, node_limit, ttl)
             end
 
         end

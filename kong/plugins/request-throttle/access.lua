@@ -35,17 +35,20 @@ local function get_id(time, window_size)
     return tostring(math_floor(time / window_size))
 end
 
+-- 计算最新的窗口的累计值
 local function get_counter_key(limit_key, time, window_size)
     local id = get_id(time, window_size)
     return string_format("%s.%s.counter", limit_key, id)
 end
 
+-- 返回上一个窗口的累计值和保存上一个窗口累计值的key
 local function last_sample_count(counter_dict, limit_key, window_size, now_ms)
     local a_window_ago_from_now = now_ms - window_size
     local last_counter_key = get_counter_key(limit_key, a_window_ago_from_now, window_size)
     return store_get(counter_dict, last_counter_key) or 0, last_counter_key
 end
 
+-- add_sample_and_estimate_total_count 计算当前的窗口流量
 local function add_sample_and_estimate_total_count(counter_dict, limit_key, limit, window_size)
     local now_ms = ngx_now() * 1000
     local last_count, last_counter_key = last_sample_count(counter_dict, limit_key, window_size, now_ms)
@@ -66,6 +69,7 @@ local function add_sample_and_estimate_total_count(counter_dict, limit_key, limi
 
 end
 
+-- 使用插件的uuid用于保存当前窗口和上一个窗口计数器的值
 local function keep_keys_under_plugin_instance(counter_dict, uuid, counter_key, last_counter_key, expiry)
     local keys_array = kong.table.new(2, 0)
     keys_array[1] = counter_key
@@ -79,6 +83,7 @@ local function keep_keys_under_plugin_instance(counter_dict, uuid, counter_key, 
     ngx.shared[counter_dict]:expire(uuid, expiry)
 end
 
+-- 获取限制的key
 local function get_limit_key(conf)
     local identifier
     if conf.limit_by == "current_entity" then
@@ -95,6 +100,7 @@ local function get_limit_key(conf)
     return identifier
 end
 
+-- get_kong_nodes_number 获取节点数量
 local function get_kong_nodes_number(counter_dict)
     return ngx.shared[counter_dict]:get(kong.node.get_id())
 end
